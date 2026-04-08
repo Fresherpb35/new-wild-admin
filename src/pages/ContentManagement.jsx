@@ -41,7 +41,7 @@ function CmsInput({ label, value, onChange, placeholder, type = "text" }) {
   );
 }
 
-function CmsTextarea({ label, value, onChange, rows = 4, placeholder }) {
+function CmsTextarea({ label, value, onChange, rows = 4, placeholder,name }) {
   return (
     <div>
       {label && (
@@ -50,6 +50,7 @@ function CmsTextarea({ label, value, onChange, rows = 4, placeholder }) {
         </label>
       )}
       <textarea
+      name={name}
         value={value || ""}
         onChange={onChange}
         rows={rows}
@@ -157,11 +158,11 @@ function BlogForm({ initial = {}, onSave, onCancel, saving }) {
       </div>
 
       <FormField label="Excerpt">
-        <CmsTextarea value={form.excerpt} onChange={handleChange} rows={3} placeholder="Brief summary..." />
+        <CmsTextarea name="excerpt" value={form.excerpt} onChange={handleChange} rows={3} placeholder="Brief summary..." />
       </FormField>
 
       <FormField label="Full Content *">
-        <CmsTextarea value={form.content} onChange={handleChange} rows={12} placeholder="Write full blog post (HTML supported)..." />
+        <CmsTextarea name="content" value={form.content} onChange={handleChange} rows={12} placeholder="Write full blog post (HTML supported)..." />
       </FormField>
 
       <label className="flex items-center gap-2 cursor-pointer text-sm pt-2">

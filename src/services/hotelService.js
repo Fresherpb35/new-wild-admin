@@ -1,6 +1,6 @@
 // services/hotelService.js
 
-const API_BASE = 'http://localhost:5000/api/hotels';   // Change port if yours is different
+const API_BASE = `${import.meta.env.VITE_API_URL}/api/hotels`;
 
 // Get all hotels
 export const getHotels = async () => {

@@ -1,25 +1,25 @@
 import { createContext, useContext, useState, useCallback, useEffect } from "react";
 import * as bookingSvc from "../services/bookingService";
 import * as blogSvc    from "../services/blogService";
-import * as gallerySvc from "../services/galleryService";
-import * as siteSvc    from "../services/siteService";
 import { getErrorMsg } from "../services/api";
 
 const AppContext = createContext(null);
 
 export function AppProvider({ children }) {
   /* ── data state ── */
-  const [bookings,  setBookings]  = useState([]);
-  const [bookingStats, setBookingStats] = useState({ total:0, confirmed:0, pending:0, cancelled:0, revenue:0 });
-  const [blogs,     setBlogs]     = useState([]);
-  const [gallery,   setGallery]   = useState([]);
-  const [siteInfo,  setSiteInfo]  = useState({});
+  const [bookings, setBookings] = useState([]);
+  const [bookingStats, setBookingStats] = useState({ 
+    total: 0, 
+    confirmed: 0, 
+    pending: 0, 
+    cancelled: 0, 
+    revenue: 0 
+  });
+  const [blogs, setBlogs] = useState([]);
 
   /* ── loading flags ── */
   const [loadingBookings, setLoadingBookings] = useState(false);
-  const [loadingBlogs,    setLoadingBlogs]    = useState(false);
-  const [loadingGallery,  setLoadingGallery]  = useState(false);
-  const [loadingSite,     setLoadingSite]     = useState(false);
+  const [loadingBlogs, setLoadingBlogs] = useState(false);
 
   /* ── toasts ── */
   const [toasts, setToasts] = useState([]);
@@ -35,13 +35,12 @@ export function AppProvider({ children }) {
   }, [toast]);
 
   /* ════════════════════════════════════════
-     BOOKINGS
+      BOOKINGS LOGIC
   ════════════════════════════════════════ */
   const fetchBookings = useCallback(async (params = {}) => {
     setLoadingBookings(true);
     try {
       const res = await bookingSvc.getBookings(params);
-      /* handle both { bookings:[...] } and [...] shapes */
       const list = Array.isArray(res) ? res : (res?.bookings ?? res?.data ?? []);
       setBookings(list);
     } catch (err) {
@@ -56,13 +55,13 @@ export function AppProvider({ children }) {
       const res = await bookingSvc.getBookingStats();
       if (res) setBookingStats(res);
     } catch (_) {
-      /* silently compute from local list */
+      /* Silently compute from local list if API fails */
       setBookingStats({
-        total:     bookings.length,
-        confirmed: bookings.filter(b => b.status === "Confirmed" || b.status === "confirmed").length,
-        pending:   bookings.filter(b => b.status === "Pending"   || b.status === "pending").length,
-        cancelled: bookings.filter(b => b.status === "Cancelled" || b.status === "cancelled").length,
-        revenue:   0,
+        total: bookings.length,
+        confirmed: bookings.filter(b => b.status?.toLowerCase() === "confirmed").length,
+        pending: bookings.filter(b => b.status?.toLowerCase() === "pending").length,
+        cancelled: bookings.filter(b => b.status?.toLowerCase() === "cancelled").length,
+        revenue: 0,
       });
     }
   }, [bookings]);
@@ -122,7 +121,7 @@ export function AppProvider({ children }) {
   }, [toast, toastError, fetchBookingStats]);
 
   /* ════════════════════════════════════════
-     BLOGS
+      BLOGS LOGIC
   ════════════════════════════════════════ */
   const fetchBlogs = useCallback(async () => {
     setLoadingBlogs(true);
@@ -188,82 +187,13 @@ export function AppProvider({ children }) {
     }
   }, [toast, toastError]);
 
-  /* ════════════════════════════════════════
-     GALLERY
-  ════════════════════════════════════════ */
-  const fetchGallery = useCallback(async () => {
-    setLoadingGallery(true);
-    try {
-      const res = await gallerySvc.getGallery();
-      const list = Array.isArray(res) ? res : (res?.gallery ?? res?.data ?? []);
-      setGallery(list);
-    } catch (err) {
-      toastError(err, "Failed to load gallery");
-    } finally {
-      setLoadingGallery(false);
-    }
-  }, [toastError]);
-
-  const addGalleryItem = useCallback(async (data) => {
-    try {
-      const res = await gallerySvc.addGalleryItem(data);
-      const item = res?.item ?? res?.data ?? res;
-      setGallery(p => [...p, item]);
-      toast("Gallery item added");
-      return true;
-    } catch (err) {
-      toastError(err, "Failed to add gallery item");
-      return false;
-    }
-  }, [toast, toastError]);
-
-  const deleteGalleryItem = useCallback(async (id) => {
-    try {
-      await gallerySvc.deleteGalleryItem(id);
-      setGallery(p => p.filter(g => g.id !== id));
-      toast("Gallery item removed", "error");
-      return true;
-    } catch (err) {
-      toastError(err, "Failed to remove gallery item");
-      return false;
-    }
-  }, [toast, toastError]);
-
-  /* ════════════════════════════════════════
-     SITE INFO
-  ════════════════════════════════════════ */
-  const fetchSiteInfo = useCallback(async () => {
-    setLoadingSite(true);
-    try {
-      const res = await siteSvc.getSiteInfo();
-      setSiteInfo(res?.siteInfo ?? res?.data ?? res ?? {});
-    } catch (err) {
-      toastError(err, "Failed to load site info");
-    } finally {
-      setLoadingSite(false);
-    }
-  }, [toastError]);
-
-  const updateSiteInfo = useCallback(async (data) => {
-    try {
-      await siteSvc.updateSiteInfo(data);
-      setSiteInfo(p => ({ ...p, ...data }));
-      toast("Website content saved successfully");
-      return true;
-    } catch (err) {
-      toastError(err, "Failed to save site info");
-      return false;
-    }
-  }, [toast, toastError]);
-
   /* ── Initial data load ── */
   useEffect(() => {
     fetchBookings();
     fetchBookingStats();
     fetchBlogs();
-    fetchGallery();
-    fetchSiteInfo();
-  }, []);
+    // ❌ Removed fetchGallery and fetchSiteInfo to prevent 404s
+  }, [fetchBookings, fetchBookingStats, fetchBlogs]);
 
   return (
     <AppContext.Provider value={{
@@ -274,13 +204,7 @@ export function AppProvider({ children }) {
       /* blogs */
       blogs, loadingBlogs,
       fetchBlogs, addBlog, updateBlog, deleteBlog, toggleBlogPublish,
-      /* gallery */
-      gallery, loadingGallery,
-      fetchGallery, addGalleryItem, deleteGalleryItem,
-      /* site */
-      siteInfo, loadingSite,
-      fetchSiteInfo, updateSiteInfo,
-      /* toasts + direct toast fn */
+      /* toasts */
       toasts, toast,
     }}>
       {children}

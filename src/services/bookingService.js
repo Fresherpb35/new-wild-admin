@@ -19,9 +19,24 @@ export const createBooking = async (data) => {
   return res.data;
 };
 
+// src/services/bookingService.js
+
 export const updateBooking = async (id, data) => {
-  const res = await api.put(`/bookings/${id}`, data);
-  return res.data;
+  // 1. Destructure karke unwanted fields ko alag karein
+  // Hum 'id', 'createdAt', 'updatedAt' ko 'rest' se nikaal rahe hain
+  const { id: _unusedId, createdAt, updatedAt, ...cleanData } = data;
+
+  console.log("Sending Clean Data to Backend:", cleanData);
+
+  try {
+    const res = await api.put(`/bookings/${id}`, cleanData, {
+      timeout: 60000 // 1 minute timeout for Render
+    });
+    return res.data;
+  } catch (error) {
+    console.error("Update failed:", error.response?.data || error.message);
+    throw error;
+  }
 };
 
 export const deleteBooking = async (id) => {

@@ -1,7 +1,8 @@
 import axios from "axios";
 
-const BASE = process.env.VITE_API_URL || "http://localhost:5000/api";
+const BASE = import.meta.env.VITE_API_URL || "https://wildsafari-backend.onrender.com/api";
 
+console.log("🚀 Calling Backend at:", BASE);
 const api = axios.create({
   baseURL: BASE,
   timeout: 60000,

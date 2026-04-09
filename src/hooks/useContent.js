@@ -1,13 +1,10 @@
 import { useState, useEffect, useCallback } from "react";
-import {
+import api, {
   getBlogs,
   createBlog,
   updateBlog,
   deleteBlog,
-} from "../services/api";
-
-// Use env variable only
-const API_BASE = import.meta.env.VITE_API_URL;
+} from "../services/api"; // Added 'api' import for custom calls
 
 export function useContent(toastFn) {
   const [blogs, setBlogs] = useState([]);
@@ -20,19 +17,21 @@ export function useContent(toastFn) {
   const fetchAll = useCallback(async () => {
     setLoading(true);
     try {
+      // ✅ Axios automatically handles VITE_API_URL and Token
       const [blogsRes, hotelsRes] = await Promise.allSettled([
         getBlogs(),
-        fetch(`${API_BASE}/hotels`),
+        api.get("/hotels"), 
       ]);
 
       if (blogsRes.status === "fulfilled") {
+        // Axios uses .data, no need for .json()
         const data = blogsRes.value?.data?.data || blogsRes.value?.data || [];
         setBlogs(Array.isArray(data) ? data : []);
       }
 
       if (hotelsRes.status === "fulfilled") {
-        const res = await hotelsRes.value.json();
-        const hotelList = res.success ? res.data || [] : [];
+        const res = hotelsRes.value; // Axios instance already returns res.data if configured
+        const hotelList = res.success ? res.data || [] : (Array.isArray(res) ? res : []);
         setHotels(hotelList);
         if (hotelList.length > 0) setSiteInfo(hotelList[0]);
       }
@@ -48,78 +47,93 @@ export function useContent(toastFn) {
     fetchAll();
   }, [fetchAll]);
 
-  // hotel CRUD
+  // ─── HOTEL CRUD (Now using Axios) ──────────────────────────────────────────
+
   const addHotel = async (formData) => {
-    const res = await fetch(`${API_BASE}/hotels`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(formData),
-    });
-    const result = await res.json();
-    if (result.success) {
-      setHotels((prev) => [result.data, ...prev]);
-      toast("Hotel added successfully!", "success");
-      return result.data;
+    try {
+      const res = await api.post("/hotels", formData);
+      if (res.success) {
+        setHotels((prev) => [res.data, ...prev]);
+        toast("Hotel added successfully!", "success");
+        return res.data;
+      }
+    } catch (err) {
+      toast("Failed to add hotel", "error");
     }
-    toast("Failed to add hotel", "error");
   };
 
   const updateHotel = async (id, formData) => {
-    const res = await fetch(`${API_BASE}/hotels/${id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(formData),
-    });
-    const result = await res.json();
-    if (result.success) {
-      setHotels((prev) => prev.map((h) => (h.id === id ? result.data : h)));
-      toast("Hotel updated successfully", "success");
-      return result.data;
+    try {
+      const res = await api.put(`/hotels/${id}`, formData);
+      if (res.success) {
+        setHotels((prev) => prev.map((h) => (h.id === id || h._id === id ? res.data : h)));
+        toast("Hotel updated successfully", "success");
+        return res.data;
+      }
+    } catch (err) {
+      toast("Failed to update hotel", "error");
     }
-    toast("Failed to update hotel", "error");
   };
 
   const deleteHotel = async (id) => {
-    const res = await fetch(`${API_BASE}/hotels/${id}`, { method: "DELETE" });
-    const result = await res.json();
-    if (result.success) {
-      setHotels((prev) => prev.filter((h) => h.id !== id));
-      toast("Hotel deleted successfully", "success");
-    } else {
+    try {
+      const res = await api.delete(`/hotels/${id}`);
+      if (res.success) {
+        setHotels((prev) => prev.filter((h) => h.id !== id && h._id !== id));
+        toast("Hotel deleted successfully", "success");
+      }
+    } catch (err) {
       toast("Failed to delete hotel", "error");
     }
   };
 
-  // blogs
+  // ─── BLOG CRUD ─────────────────────────────────────────────────────────────
+
   const addBlog = async (formData) => {
-    const res = await createBlog(formData);
-    const newBlog = res?.data?.data || res?.data || {};
-    setBlogs((p) => [newBlog, ...p]);
-    toast("Blog created successfully!");
+    try {
+      const res = await createBlog(formData);
+      const newBlog = res?.data?.data || res?.data || res || {};
+      setBlogs((p) => [newBlog, ...p]);
+      toast("Blog created successfully!", "success");
+    } catch (err) {
+      toast("Failed to create blog", "error");
+    }
   };
 
   const editBlog = async (id, formData) => {
-    const res = await updateBlog(id, formData);
-    const updated = res?.data?.data || res?.data || {};
-    setBlogs((p) => p.map((b) => (b.id === id || b._id === id ? { ...b, ...updated } : b)));
-    toast("Blog updated successfully");
+    try {
+      const res = await updateBlog(id, formData);
+      const updated = res?.data?.data || res?.data || res || {};
+      setBlogs((p) => p.map((b) => (b.id === id || b._id === id ? { ...b, ...updated } : b)));
+      toast("Blog updated successfully", "success");
+    } catch (err) {
+      toast("Failed to update blog", "error");
+    }
   };
 
   const removeBlog = async (id) => {
-    await deleteBlog(id);
-    setBlogs((p) => p.filter((b) => b.id !== id && b._id !== id));
-    toast("Blog deleted");
+    try {
+      await deleteBlog(id);
+      setBlogs((p) => p.filter((b) => b.id !== id && b._id !== id));
+      toast("Blog deleted", "success");
+    } catch (err) {
+      toast("Failed to delete blog", "error");
+    }
   };
 
   const flipPublish = async (id) => {
-    const blog = blogs.find((b) => b.id === id || b._id === id);
-    if (!blog) return;
-    const newPublished = !blog.published;
-    await updateBlog(id, { published: newPublished });
-    setBlogs((p) =>
-      p.map((b) => (b.id === id || b._id === id ? { ...b, published: newPublished } : b))
-    );
-    toast(newPublished ? "Blog published" : "Blog unpublished");
+    try {
+      const blog = blogs.find((b) => b.id === id || b._id === id);
+      if (!blog) return;
+      const newPublished = !blog.published;
+      await updateBlog(id, { published: newPublished });
+      setBlogs((p) =>
+        p.map((b) => (b.id === id || b._id === id ? { ...b, published: newPublished } : b))
+      );
+      toast(newPublished ? "Blog published" : "Blog unpublished", "success");
+    } catch (err) {
+      toast("Update failed", "error");
+    }
   };
 
   const saveSite = async (data) => {
@@ -127,7 +141,7 @@ export function useContent(toastFn) {
       toast("No hotel found. Please add a hotel first.", "error");
       return;
     }
-    const mainHotelId = hotels[0].id;
+    const mainHotelId = hotels[0].id || hotels[0]._id;
     const payload = {
       name: (data.name || data.hotelName || "").trim(),
       img: (data.img || "").trim(),
@@ -136,17 +150,15 @@ export function useContent(toastFn) {
       sortOrder: parseInt(data.sortOrder) || 0,
       isActive: data.isActive ?? true,
     };
-    const res = await fetch(`${API_BASE}/hotels/${mainHotelId}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-    const result = await res.json();
-    if (res.ok && result.success) {
-      await fetchAll();
-      toast("Hotel saved successfully!", "success");
-    } else {
-      toast(result.message || "Failed to save", "error");
+
+    try {
+      const res = await api.put(`/hotels/${mainHotelId}`, payload);
+      if (res.success) {
+        await fetchAll();
+        toast("Hotel saved successfully!", "success");
+      }
+    } catch (err) {
+      toast(err.response?.data?.message || "Failed to save", "error");
     }
   };
 

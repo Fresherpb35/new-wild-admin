@@ -17,59 +17,63 @@ export function useBookings() {
   const [filter, setFilter] = useState("All");
   const [selected, setSelected] = useState([]);
 
-  // 1. Parallel Fetching for better speed
-  const fetchAllData = useCallback(async (showLoading = true) => {
-    if (showLoading) setLoading(true);
-    setError("");
+  const fetchBookings = useCallback(async () => {
+  setLoading(true);
+  setError("");
 
+  try {
+    const res = await getBookings();
+
+    console.log("BOOKINGS API RESPONSE:", res); // 🔍 DEBUG
+
+    // ✅ FIXED EXTRACTION
+    let data = [];
+
+    if (Array.isArray(res)) {
+      data = res;
+    } else if (Array.isArray(res?.data)) {
+      data = res.data;
+    } else if (Array.isArray(res?.bookings)) {
+      data = res.bookings;
+    } else if (Array.isArray(res?.data?.bookings)) {
+      data = res.data.bookings;
+    }
+
+    setBookings(data);
+  } catch (err) {
+    console.error("Failed to fetch bookings:", err);
+    setError(err.message || "Failed to load bookings.");
+    setBookings([]);
+  } finally {
+    setLoading(false);
+  }
+}, []);
+
+  const fetchStats = useCallback(async () => {
     try {
-      // Parallel execution: Dono calls ek saath jayengi
-      const [res, statsRes] = await Promise.allSettled([
-        getBookings(),
-        getBookingStats()
-      ]);
-
-      // Handle Bookings Response
-      if (res.status === "fulfilled") {
-        let data = [];
-        const val = res.value;
-        if (Array.isArray(val)) data = val;
-        else if (Array.isArray(val?.data)) data = val.data;
-        else if (Array.isArray(val?.bookings)) data = val.bookings;
-        else if (Array.isArray(val?.data?.bookings)) data = val.data.bookings;
-        setBookings(data);
-      } else {
-        throw new Error("Failed to load bookings");
-      }
-
-      // Handle Stats Response
-      if (statsRes.status === "fulfilled") {
-        const s = statsRes.value?.data ?? statsRes.value ?? {};
-        setStats({
-          total: s.total || 0,
-          confirmed: s.confirmed || 0,
-          pending: s.pending || 0,
-          cancelled: s.cancelled || 0,
-        });
-      }
+      const result = await getBookingStats();
+      const s = result?.data ?? result ?? {};
+      setStats({
+        total: s.total || 0,
+        confirmed: s.confirmed || 0,
+        pending: s.pending || 0,
+        cancelled: s.cancelled || 0,
+      });
     } catch (err) {
-      console.error("Fetch Error:", err);
-      setError(err.message || "Failed to load data.");
-    } finally {
-      setLoading(false);
+      console.warn("Stats fetch failed → using local stats");
     }
   }, []);
 
   useEffect(() => {
-    fetchAllData();
-  }, [fetchAllData]);
+    fetchBookings();
+    fetchStats();
+  }, [fetchBookings, fetchStats]);
 
-  // 2. Client-side filtering logic
+  // Filtered bookings
   const filtered = useMemo(() => {
     const q = search.toLowerCase().trim();
     return bookings.filter((b) => {
-      const bStatus = (b.status || "").toUpperCase();
-      const matchFilter = filter === "All" || bStatus === filter.toUpperCase();
+      const matchFilter = filter === "All" || b.status?.toUpperCase() === filter.toUpperCase();
       if (!matchFilter) return false;
       if (!q) return true;
 
@@ -77,79 +81,63 @@ export function useBookings() {
         (b.name || "").toLowerCase().includes(q) ||
         (b.email || "").toLowerCase().includes(q) ||
         (b.phone || "").includes(q) ||
-        (b.id || b._id || "").toString().toLowerCase().includes(q) ||
+        (b.id || "").toString().toLowerCase().includes(q) ||
         (b.safariType || "").toLowerCase().includes(q) ||
         (b.safariZone || "").toLowerCase().includes(q)
       );
     });
   }, [bookings, search, filter]);
 
-  // 3. Optimized Local Stats (Always fallback to local if API stats fail)
-  const mergedStats = useMemo(() => {
-    if (stats.total > 0) return stats;
-    return {
-      total: bookings.length,
-      confirmed: bookings.filter((b) => b.status?.toUpperCase() === "CONFIRMED").length,
-      pending: bookings.filter((b) => b.status?.toUpperCase() === "PENDING").length,
-      cancelled: bookings.filter((b) => b.status?.toUpperCase() === "CANCELLED").length,
-    };
-  }, [bookings, stats]);
+  // Local stats fallback
+  const localStats = useMemo(() => ({
+    total: bookings.length,
+    confirmed: bookings.filter((b) => b.status?.toUpperCase() === "CONFIRMED").length,
+    pending: bookings.filter((b) => b.status?.toUpperCase() === "PENDING").length,
+    cancelled: bookings.filter((b) => b.status?.toUpperCase() === "CANCELLED").length,
+  }), [bookings]);
 
-  // Selection Logic
+  const mergedStats = stats.total > 0 ? stats : localStats;
+
+  // Selection
   const toggleSelect = (id) => {
     setSelected((prev) => (prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id]));
   };
 
   const toggleAll = () => {
     setSelected((prev) =>
-      prev.length === filtered.length && filtered.length > 0 ? [] : filtered.map((b) => b.id || b._id)
+      prev.length === filtered.length && filtered.length > 0 ? [] : filtered.map((b) => b.id)
     );
   };
 
-  // 4. CRUD with Optimistic Updates (Turant UI change)
+  // CRUD
   const addBooking = async (data) => {
     const res = await createBooking(data);
-    await fetchAllData(false); // Background refresh
+    await fetchBookings();
+    await fetchStats();
     return res;
   };
 
   const editBooking = async (id, data) => {
-    // Local update first (Optimistic)
-    setBookings(prev => prev.map(b => (b.id === id || b._id === id ? { ...b, ...data } : b)));
-    
+    if (!id) throw new Error("ID is required to edit booking");
     const res = await updateBooking(id, data);
-    await fetchAllData(false); // Background refresh to sync with server
+    await fetchBookings();
+    await fetchStats();
     return res;
   };
 
   const removeBooking = async (id) => {
-    // UI se turant delete karein
-    setBookings(prev => prev.filter(b => b.id !== id && b._id !== id));
-    
-    try {
-      await deleteBooking(id);
-      await fetchAllData(false); // Refresh stats in background
-    } catch (err) {
-      fetchAllData(); // Error aane par data wapas layein
-      throw err;
-    }
+    if (!id) throw new Error("ID is required to delete booking");
+    await deleteBooking(id);
+    setBookings((prev) => prev.filter((b) => b.id !== id));
+    await fetchStats();
   };
 
   const removeSelected = async () => {
     if (selected.length === 0) return;
-    const oldBookings = [...bookings];
-    
-    // UI se turant hatayein
-    setBookings(prev => prev.filter(b => !selected.includes(b.id || b._id)));
-    
-    try {
-      await deleteBulkBookings(selected);
-      setSelected([]);
-      await fetchAllData(false);
-    } catch (err) {
-      setBookings(oldBookings); // Rollback on error
-      throw err;
-    }
+    await deleteBulkBookings(selected);
+    setBookings((prev) => prev.filter((b) => !selected.includes(b.id)));
+    setSelected([]);
+    await fetchStats();
   };
 
   return {
@@ -169,6 +157,6 @@ export function useBookings() {
     editBooking,
     removeBooking,
     removeSelected,
-    refetch: fetchAllData,
+    refetch: fetchBookings,
   };
 }

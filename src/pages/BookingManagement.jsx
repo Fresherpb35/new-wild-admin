@@ -37,7 +37,16 @@ function SkeletonRow({ cols = 11 }) {
 }
 
 function BookingForm({ initial = {}, onSave, onCancel, title, saving }) {
-  const [form, setForm] = useState({ ...EMPTY_BOOKING, ...initial });
+  // Ensure we capture all possible field names from your DB
+  const [form, setForm] = useState({ 
+    ...EMPTY_BOOKING, 
+    ...initial,
+    name: initial.name || initial.guestName || "",
+    email: initial.email || initial.guestEmail || "",
+    // Format date specifically for the <input type="date" />
+    safariDate: initial.safariDate ? new Date(initial.safariDate).toISOString().split('T')[0] : ""
+  });
+  
   const [errors, setErrors] = useState({});
 
   const set = (key) => (e) => {
@@ -45,19 +54,15 @@ function BookingForm({ initial = {}, onSave, onCancel, title, saving }) {
     if (errors[key]) setErrors((prev) => ({ ...prev, [key]: "" }));
   };
 
-  const validate = () => {
+  const handleSave = () => {
     const e = {};
     if (!form.name?.trim()) e.name = "Guest name is required";
     if (!form.email?.trim() || !form.email.includes("@")) e.email = "Valid email is required";
     if (!form.phone?.trim()) e.phone = "Phone number is required";
     if (!form.safariDate) e.safariDate = "Safari date is required";
-    return e;
-  };
 
-  const handleSave = () => {
-    const validationErrors = validate();
-    if (Object.keys(validationErrors).length > 0) {
-      setErrors(validationErrors);
+    if (Object.keys(e).length > 0) {
+      setErrors(e);
       return;
     }
     onSave(form);
@@ -69,64 +74,43 @@ function BookingForm({ initial = {}, onSave, onCancel, title, saving }) {
         <FormField label="Guest Name" error={errors.name}>
           <FInput value={form.name} onChange={set("name")} placeholder="Full name" />
         </FormField>
-
         <FormField label="Email" error={errors.email}>
           <FInput type="email" value={form.email} onChange={set("email")} placeholder="guest@example.com" />
         </FormField>
-
         <FormField label="Phone" error={errors.phone}>
           <FInput value={form.phone} onChange={set("phone")} placeholder="+91 98765 43210" />
         </FormField>
-
         <FormField label="Safari Date" error={errors.safariDate}>
           <FInput type="date" value={form.safariDate} onChange={set("safariDate")} />
         </FormField>
-
         <FormField label="Safari Type">
           <FSelect value={form.safariType} onChange={set("safariType")}>
             <option value="GYPSY">GYPSY</option>
             <option value="CANTER">CANTER</option>
           </FSelect>
         </FormField>
-
         <FormField label="Safari Zone">
           <FSelect value={form.safariZone} onChange={set("safariZone")}>
-            {Array.from({ length: 9 }, (_, i) => (
-              <option key={i + 1} value={`Zone ${i + 1}`}>
-                Zone {i + 1}
-              </option>
+            {Array.from({ length: 10 }, (_, i) => (
+              <option key={i + 1} value={`Zone ${i + 1}`}>Zone {i + 1}</option>
             ))}
           </FSelect>
         </FormField>
-
         <FormField label="Safari Time">
           <FSelect value={form.safariTime} onChange={set("safariTime")}>
             <option value="MORNING">MORNING</option>
             <option value="EVENING">EVENING</option>
           </FSelect>
         </FormField>
-
         <FormField label="Status">
           <FSelect value={form.status} onChange={set("status")}>
-            {STATUSES.map((s) => (
-              <option key={s} value={s}>
-                {s}
-              </option>
-            ))}
+            {STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
           </FSelect>
         </FormField>
-
         <FormField label="Notes" className="sm:col-span-2">
-          <FInput
-            as="textarea"
-            rows={3}
-            value={form.notes || ""}
-            onChange={set("notes")}
-            placeholder="Any special requests or notes..."
-          />
+          <FInput as="textarea" rows={3} value={form.notes || ""} onChange={set("notes")} placeholder="Any special requests..." />
         </FormField>
       </div>
-
       <div className="flex gap-3 justify-end pt-4">
         <Button variant="ghost-gold" onClick={onCancel}>Cancel</Button>
         <Button variant="green" onClick={handleSave} disabled={saving}>
@@ -279,7 +263,7 @@ export default function BookingManagement() {
                 </tr>
               ) : (
                 filtered.map((b) => {
-                  const bid = b.id;
+const bid = b.id || b._id;
                   const isSel = selected.includes(bid);
 
                   return (

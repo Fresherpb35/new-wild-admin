@@ -72,8 +72,8 @@ export const updateBlog = (id, data) => api.put(`/blogs/${id}`, data);
 export const deleteBlog = (id) => api.delete(`/blogs/${id}`);
 
 // Hotel Content APIs
-export const getHotelContent = () => api.get("/hotel");
-export const updateHotelContent = (data) => api.put("/hotel", data);
+export const getHotelContent = () => api.get("/hotels");
+export const updateHotelContent = (data) => api.put("/hotels", data);
 export const toggleBlogPublish = (id) => api.patch(`/blogs/${id}/toggle-publish`);
 
 // ─────────────────────────────────────────────────────────────

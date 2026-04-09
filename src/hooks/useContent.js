@@ -1,4 +1,3 @@
-// hooks/useContent.js
 import { useState, useEffect, useCallback } from "react";
 import {
   getBlogs,
@@ -7,7 +6,8 @@ import {
   deleteBlog,
 } from "../services/api";
 
-const API_BASE = process.env.VITE_API_URL || "http://localhost:5000/api";
+// Use env variable only
+const API_BASE = import.meta.env.VITE_API_URL;
 
 export function useContent(toastFn) {
   const [blogs, setBlogs] = useState([]);
@@ -26,7 +26,7 @@ export function useContent(toastFn) {
       ]);
 
       if (blogsRes.status === "fulfilled") {
-        const data = blogsRes.value?.data?.data || blogsRes.value?.data || blogsRes.value || [];
+        const data = blogsRes.value?.data?.data || blogsRes.value?.data || [];
         setBlogs(Array.isArray(data) ? data : []);
       }
 
@@ -34,9 +34,7 @@ export function useContent(toastFn) {
         const res = await hotelsRes.value.json();
         const hotelList = res.success ? res.data || [] : [];
         setHotels(hotelList);
-        if (hotelList.length > 0) {
-          setSiteInfo(hotelList[0]);
-        }
+        if (hotelList.length > 0) setSiteInfo(hotelList[0]);
       }
     } catch (err) {
       console.error("Failed to fetch content:", err);
@@ -50,62 +48,49 @@ export function useContent(toastFn) {
     fetchAll();
   }, [fetchAll]);
 
-  // Hotel CRUD
+  // hotel CRUD
   const addHotel = async (formData) => {
-    try {
-      const res = await fetch(`${API_BASE}/hotels`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
-      });
-      const result = await res.json();
-
-      if (result.success) {
-        setHotels((prev) => [result.data, ...prev]);
-        toast("Hotel added successfully!", "success");
-        return result.data;
-      }
-    } catch (err) {
-      console.error(err);
-      toast("Failed to add hotel", "error");
+    const res = await fetch(`${API_BASE}/hotels`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(formData),
+    });
+    const result = await res.json();
+    if (result.success) {
+      setHotels((prev) => [result.data, ...prev]);
+      toast("Hotel added successfully!", "success");
+      return result.data;
     }
+    toast("Failed to add hotel", "error");
   };
 
   const updateHotel = async (id, formData) => {
-    try {
-      const res = await fetch(`${API_BASE}/hotels/${id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
-      });
-      const result = await res.json();
-
-      if (result.success) {
-        setHotels((prev) => prev.map((h) => (h.id === id ? result.data : h)));
-        toast("Hotel updated successfully", "success");
-        return result.data;
-      }
-    } catch (err) {
-      console.error(err);
-      toast("Failed to update hotel", "error");
+    const res = await fetch(`${API_BASE}/hotels/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(formData),
+    });
+    const result = await res.json();
+    if (result.success) {
+      setHotels((prev) => prev.map((h) => (h.id === id ? result.data : h)));
+      toast("Hotel updated successfully", "success");
+      return result.data;
     }
+    toast("Failed to update hotel", "error");
   };
 
   const deleteHotel = async (id) => {
-    try {
-      const res = await fetch(`${API_BASE}/hotels/${id}`, { method: "DELETE" });
-      const result = await res.json();
-
-      if (result.success) {
-        setHotels((prev) => prev.filter((h) => h.id !== id));
-        toast("Hotel deleted successfully", "success");
-      }
-    } catch (err) {
+    const res = await fetch(`${API_BASE}/hotels/${id}`, { method: "DELETE" });
+    const result = await res.json();
+    if (result.success) {
+      setHotels((prev) => prev.filter((h) => h.id !== id));
+      toast("Hotel deleted successfully", "success");
+    } else {
       toast("Failed to delete hotel", "error");
     }
   };
 
-  // Blog functions (existing)
+  // blogs
   const addBlog = async (formData) => {
     const res = await createBlog(formData);
     const newBlog = res?.data?.data || res?.data || {};
@@ -116,7 +101,7 @@ export function useContent(toastFn) {
   const editBlog = async (id, formData) => {
     const res = await updateBlog(id, formData);
     const updated = res?.data?.data || res?.data || {};
-    setBlogs((p) => p.map((b) => (b.id === id || b._id === id) ? { ...b, ...updated } : b));
+    setBlogs((p) => p.map((b) => (b.id === id || b._id === id ? { ...b, ...updated } : b)));
     toast("Blog updated successfully");
   };
 
@@ -131,18 +116,18 @@ export function useContent(toastFn) {
     if (!blog) return;
     const newPublished = !blog.published;
     await updateBlog(id, { published: newPublished });
-    setBlogs((p) => p.map((b) => (b.id === id || b._id === id) ? { ...b, published: newPublished } : b));
+    setBlogs((p) =>
+      p.map((b) => (b.id === id || b._id === id ? { ...b, published: newPublished } : b))
+    );
     toast(newPublished ? "Blog published" : "Blog unpublished");
   };
 
   const saveSite = async (data) => {
-    if (hotels.length === 0) {
+    if (!hotels.length) {
       toast("No hotel found. Please add a hotel first.", "error");
       return;
     }
-
     const mainHotelId = hotels[0].id;
-
     const payload = {
       name: (data.name || data.hotelName || "").trim(),
       img: (data.img || "").trim(),
@@ -151,25 +136,17 @@ export function useContent(toastFn) {
       sortOrder: parseInt(data.sortOrder) || 0,
       isActive: data.isActive ?? true,
     };
-
-    try {
-      const res = await fetch(`${API_BASE}/hotels/${mainHotelId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-
-      const result = await res.json();
-
-      if (res.ok && result.success) {
-        await fetchAll();
-        toast("Hotel saved successfully!", "success");
-      } else {
-        toast(result.message || "Failed to save", "error");
-      }
-    } catch (err) {
-      console.error(err);
-      toast("Failed to save hotel", "error");
+    const res = await fetch(`${API_BASE}/hotels/${mainHotelId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const result = await res.json();
+    if (res.ok && result.success) {
+      await fetchAll();
+      toast("Hotel saved successfully!", "success");
+    } else {
+      toast(result.message || "Failed to save", "error");
     }
   };
 

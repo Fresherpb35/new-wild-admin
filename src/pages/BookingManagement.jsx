@@ -36,24 +36,20 @@ function SkeletonRow({ cols = 11 }) {
   );
 }
 
-// ==================== FIXED BOOKING FORM ====================
 function BookingForm({ initial = {}, onSave, onCancel, title, saving }) {
   const [form, setForm] = useState({ ...EMPTY_BOOKING, ...initial });
   const [errors, setErrors] = useState({});
 
-  // Reset form when initial data changes (Edit mode ke liye zaroori)
+  // Reset form when initial data changes (Critical for Edit mode)
   useEffect(() => {
+  if (initial && Object.keys(initial).length > 0) {
     setForm({ ...EMPTY_BOOKING, ...initial });
     setErrors({});
-  }, [initial]);
+  }
+}, [initial?.id]); // ✅ only run when editing item changes
 
-  // ✅ Universal Change Handler - Sab fields ke liye kaam karega (FSelect + FInput)
-  const handleChange = (key) => (e) => {
-    const value = e?.target ? e.target.value : e;   // Custom component ya native input dono handle karega
-
-    setForm((prev) => ({ ...prev, [key]: value }));
-
-    // Change karte hi error clear ho jaaye
+  const set = (key) => (e) => {
+    setForm((prev) => ({ ...prev, [key]: e.target.value }));
     if (errors[key]) {
       setErrors((prev) => ({ ...prev, [key]: "" }));
     }
@@ -81,53 +77,30 @@ function BookingForm({ initial = {}, onSave, onCancel, title, saving }) {
     <div className="space-y-5">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <FormField label="Guest Name" error={errors.name}>
-          <FInput 
-            value={form.name} 
-            onChange={handleChange("name")} 
-            placeholder="Full name" 
-          />
+          <FInput value={form.name} onChange={set("name")} placeholder="Full name" />
         </FormField>
 
         <FormField label="Email" error={errors.email}>
-          <FInput 
-            type="email" 
-            value={form.email} 
-            onChange={handleChange("email")} 
-            placeholder="guest@example.com" 
-          />
+          <FInput type="email" value={form.email} onChange={set("email")} placeholder="guest@example.com" />
         </FormField>
 
         <FormField label="Phone" error={errors.phone}>
-          <FInput 
-            value={form.phone} 
-            onChange={handleChange("phone")} 
-            placeholder="+91 98765 43210" 
-          />
+          <FInput value={form.phone} onChange={set("phone")} placeholder="+91 98765 43210" />
         </FormField>
 
         <FormField label="Safari Date" error={errors.safariDate}>
-          <FInput 
-            type="date" 
-            value={form.safariDate} 
-            onChange={handleChange("safariDate")} 
-          />
+          <FInput type="date" value={form.safariDate} onChange={set("safariDate")} />
         </FormField>
 
         <FormField label="Safari Type">
-          <FSelect 
-            value={form.safariType} 
-            onChange={handleChange("safariType")}
-          >
+          <FSelect value={form.safariType} onChange={set("safariType")}>
             <option value="GYPSY">GYPSY</option>
             <option value="CANTER">CANTER</option>
           </FSelect>
         </FormField>
 
         <FormField label="Safari Zone">
-          <FSelect 
-            value={form.safariZone} 
-            onChange={handleChange("safariZone")}
-          >
+          <FSelect value={form.safariZone} onChange={set("safariZone")}>
             {Array.from({ length: 9 }, (_, i) => (
               <option key={i + 1} value={`Zone ${i + 1}`}>
                 Zone {i + 1}
@@ -137,20 +110,14 @@ function BookingForm({ initial = {}, onSave, onCancel, title, saving }) {
         </FormField>
 
         <FormField label="Safari Time">
-          <FSelect 
-            value={form.safariTime} 
-            onChange={handleChange("safariTime")}
-          >
+          <FSelect value={form.safariTime} onChange={set("safariTime")}>
             <option value="MORNING">MORNING</option>
             <option value="EVENING">EVENING</option>
           </FSelect>
         </FormField>
 
         <FormField label="Status">
-          <FSelect 
-            value={form.status} 
-            onChange={handleChange("status")}
-          >
+          <FSelect value={form.status} onChange={set("status")}>
             {STATUSES.map((s) => (
               <option key={s} value={s}>
                 {s}
@@ -164,7 +131,7 @@ function BookingForm({ initial = {}, onSave, onCancel, title, saving }) {
             as="textarea"
             rows={3}
             value={form.notes || ""}
-            onChange={handleChange("notes")}
+            onChange={set("notes")}
             placeholder="Any special requests or notes..."
           />
         </FormField>
@@ -322,7 +289,7 @@ export default function BookingManagement() {
                 </tr>
               ) : (
                 filtered.map((b) => {
-                  const bid = b.id || b._id;
+                  const bid = b.id || b._id; // safer
                   const isSel = selected.includes(bid);
 
                   return (
@@ -426,7 +393,7 @@ export default function BookingManagement() {
             title="Save Changes"
             saving={saving}
             onSave={(data) => withSaving(
-              () => editBooking(editItem.id || editItem._id, data),
+              () => editBooking(editItem.id || editItem._id, data),   // safer id handling
               "Booking updated successfully",
               "Failed to update booking",
               () => setEditItem(null)

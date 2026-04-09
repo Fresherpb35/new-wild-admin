@@ -107,7 +107,7 @@ export default function LoginPage({ onLogin, loading, error }) {
             className="font-display text-xl sm:text-2xl font-bold mb-1 leading-snug"
             style={{ color: "#f5ede0" }}
           >
-            Wildlife Rose Safari Resort
+            Wildlife Safari India
           </h1>
           <p
             className="text-xs tracking-widest uppercase"
@@ -242,7 +242,7 @@ export default function LoginPage({ onLogin, loading, error }) {
             className="text-xs leading-relaxed"
             style={{ color: "rgba(245,237,224,0.25)" }}
           >
-            Wildlife Rose Safari Resort · Ranthambore, Rajasthan
+            Wildlife Safari India · Ranthambore, Rajasthan
             <br />
             Protected area — authorised personnel only
           </p>

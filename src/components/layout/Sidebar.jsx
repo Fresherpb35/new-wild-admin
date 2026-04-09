@@ -18,8 +18,8 @@ export default function Sidebar({ active, setActive, onLogout, onClose }) {
           <div className="w-9 h-9 flex items-center justify-center rounded-xl text-lg flex-shrink-0"
             style={{ background:"linear-gradient(135deg,#c9a84c,#e2c87a)" }}>🌿</div>
           <div>
-            <p className="font-display text-sm font-semibold leading-tight" style={{ color:"#f5ede0" }}>Wildlife Rose</p>
-            <p className="text-xs tracking-widest uppercase" style={{ color:"rgba(201,168,76,0.55)" }}>Safari Resort</p>
+            <p className="font-display text-sm font-semibold leading-tight" style={{ color:"#f5ede0" }}>Wildlife</p>
+            <p className="text-xs tracking-widest uppercase" style={{ color:"rgba(201,168,76,0.55)" }}>Safari India</p>
           </div>
         </div>
         {onClose && (

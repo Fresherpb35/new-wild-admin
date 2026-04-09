@@ -1,4 +1,4 @@
-# 🐯 Wildlife Rose Safari Resort — Admin Panel
+# 🐯 Wildlife Safari India — Admin Panel
 
 A **fully responsive**, **fully dynamic** luxury jungle-themed admin dashboard built with **React 18** and **Tailwind CSS 3**.
 
@@ -120,4 +120,4 @@ Any **valid email** + **password ≥ 6 characters**
 
 ---
 
-*Wildlife Rose Safari Resort · Ranthambore, Rajasthan · Protected Admin Area*
+*Wildlife Safari India · Ranthambore, Rajasthan · Protected Admin Area*

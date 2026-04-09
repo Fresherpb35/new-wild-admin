@@ -210,7 +210,7 @@ function HotelForm({ initial = {}, onSave, onCancel, saving }) {
 
   return (
     <div className="space-y-5">
-      <CmsInput label="Hotel Name *" value={form.name} onChange={handleChange("name")} placeholder="Wildlife Rose Resort" />
+      <CmsInput label="Hotel Name *" value={form.name} onChange={handleChange("name")} placeholder="Wildlife Resort" />
       <CmsInput label="Hotel Image URL" value={form.img} onChange={handleChange("img")} placeholder="https://example.com/hotel.jpg" />
       <CmsInput label="Tag / Subtitle" value={form.tag} onChange={handleChange("tag")} placeholder="Luxury Wildlife Experience" />
       <CmsTextarea label="Hotel Description" value={form.desc} onChange={handleChange("desc")} rows={6} placeholder="Full description of the hotel..." />

@@ -66,7 +66,7 @@ export default function DashboardHome({ setActive }) {
           Welcome back, Admin 👋
         </h1>
         <p className="text-xs sm:text-sm" style={{ color: "rgba(201,168,76,0.6)" }}>
-          Wildlife Rose Safari Resort ·{" "}
+          Wildlife Safari India ·{" "}
           {new Date().toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })}
         </p>
       </div>
@@ -107,7 +107,7 @@ export default function DashboardHome({ setActive }) {
             id: "content",
             icon: "✏️",
             title: "Content Management",
-            desc: "Blogs, gallery, hotel & website content",
+            desc: "Blogs, hotels",
             bg: "rgba(201,168,76,0.08)",
             border: "rgba(201,168,76,0.2)",
           },

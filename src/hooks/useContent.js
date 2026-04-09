@@ -1,10 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import api, {
-  getBlogs,
-  createBlog,
-  updateBlog,
-  deleteBlog,
-} from "../services/api"; // Added 'api' import for custom calls
+import api, { getBlogs, createBlog, updateBlog, deleteBlog } from "../services/api";
 
 export function useContent(toastFn) {
   const [blogs, setBlogs] = useState([]);
@@ -17,21 +12,22 @@ export function useContent(toastFn) {
   const fetchAll = useCallback(async () => {
     setLoading(true);
     try {
-      // ✅ Axios automatically handles VITE_API_URL and Token
       const [blogsRes, hotelsRes] = await Promise.allSettled([
         getBlogs(),
-        api.get("/hotels"), 
+        api.get("/hotels"),
       ]);
 
+      // blogs logic
       if (blogsRes.status === "fulfilled") {
-        // Axios uses .data, no need for .json()
         const data = blogsRes.value?.data?.data || blogsRes.value?.data || [];
         setBlogs(Array.isArray(data) ? data : []);
       }
 
+      // hotels logic - Fix for Admin visibility
       if (hotelsRes.status === "fulfilled") {
-        const res = hotelsRes.value; // Axios instance already returns res.data if configured
-        const hotelList = res.success ? res.data || [] : (Array.isArray(res) ? res : []);
+        const fullResponse = hotelsRes.value.data; 
+        const hotelList = fullResponse?.success ? (fullResponse.data || []) : (Array.isArray(fullResponse) ? fullResponse : []);
+        
         setHotels(hotelList);
         if (hotelList.length > 0) setSiteInfo(hotelList[0]);
       }
@@ -47,15 +43,15 @@ export function useContent(toastFn) {
     fetchAll();
   }, [fetchAll]);
 
-  // ─── HOTEL CRUD (Now using Axios) ──────────────────────────────────────────
-
   const addHotel = async (formData) => {
     try {
       const res = await api.post("/hotels", formData);
-      if (res.success) {
-        setHotels((prev) => [res.data, ...prev]);
+      const resData = res.data;
+      if (resData.success || res.status === 201) {
+        const newHotel = resData.data || resData;
+        setHotels((prev) => [newHotel, ...prev]);
         toast("Hotel added successfully!", "success");
-        return res.data;
+        return newHotel;
       }
     } catch (err) {
       toast("Failed to add hotel", "error");
@@ -65,10 +61,12 @@ export function useContent(toastFn) {
   const updateHotel = async (id, formData) => {
     try {
       const res = await api.put(`/hotels/${id}`, formData);
-      if (res.success) {
-        setHotels((prev) => prev.map((h) => (h.id === id || h._id === id ? res.data : h)));
+      const resData = res.data;
+      if (resData.success || res.status === 200) {
+        const updatedHotel = resData.data || resData;
+        setHotels((prev) => prev.map((h) => (h.id === id || h._id === id ? updatedHotel : h)));
         toast("Hotel updated successfully", "success");
-        return res.data;
+        return updatedHotel;
       }
     } catch (err) {
       toast("Failed to update hotel", "error");
@@ -78,7 +76,7 @@ export function useContent(toastFn) {
   const deleteHotel = async (id) => {
     try {
       const res = await api.delete(`/hotels/${id}`);
-      if (res.success) {
+      if (res.status === 200 || res.data?.success) {
         setHotels((prev) => prev.filter((h) => h.id !== id && h._id !== id));
         toast("Hotel deleted successfully", "success");
       }
@@ -87,8 +85,7 @@ export function useContent(toastFn) {
     }
   };
 
-  // ─── BLOG CRUD ─────────────────────────────────────────────────────────────
-
+  // Blog CRUD
   const addBlog = async (formData) => {
     try {
       const res = await createBlog(formData);
@@ -127,54 +124,16 @@ export function useContent(toastFn) {
       if (!blog) return;
       const newPublished = !blog.published;
       await updateBlog(id, { published: newPublished });
-      setBlogs((p) =>
-        p.map((b) => (b.id === id || b._id === id ? { ...b, published: newPublished } : b))
-      );
+      setBlogs((p) => p.map((b) => (b.id === id || b._id === id ? { ...b, published: newPublished } : b)));
       toast(newPublished ? "Blog published" : "Blog unpublished", "success");
     } catch (err) {
       toast("Update failed", "error");
     }
   };
 
-  const saveSite = async (data) => {
-    if (!hotels.length) {
-      toast("No hotel found. Please add a hotel first.", "error");
-      return;
-    }
-    const mainHotelId = hotels[0].id || hotels[0]._id;
-    const payload = {
-      name: (data.name || data.hotelName || "").trim(),
-      img: (data.img || "").trim(),
-      tag: (data.tag || "").trim() || null,
-      desc: (data.desc || data.hotelDesc || "").trim(),
-      sortOrder: parseInt(data.sortOrder) || 0,
-      isActive: data.isActive ?? true,
-    };
-
-    try {
-      const res = await api.put(`/hotels/${mainHotelId}`, payload);
-      if (res.success) {
-        await fetchAll();
-        toast("Hotel saved successfully!", "success");
-      }
-    } catch (err) {
-      toast(err.response?.data?.message || "Failed to save", "error");
-    }
-  };
-
   return {
-    blogs,
-    hotels,
-    siteInfo,
-    loading,
-    addBlog,
-    editBlog,
-    removeBlog,
-    flipPublish,
-    addHotel,
-    updateHotel,
-    deleteHotel,
-    saveSite,
-    refetch: fetchAll,
+    blogs, hotels, siteInfo, loading,
+    addBlog, editBlog, removeBlog, flipPublish,
+    addHotel, updateHotel, deleteHotel, refetch: fetchAll
   };
 }
